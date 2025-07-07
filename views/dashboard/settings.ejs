@@ -1,0 +1,341 @@
+<%- include('../layout', {body: `
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-cog me-2"></i>Settings</h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- WhatsApp Settings -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fab fa-whatsapp me-2"></i>WhatsApp Settings
+                </h5>
+            </div>
+            <div class="card-body">
+                <form action="/dashboard/settings" method="POST">
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="whatsapp_auto_response" 
+                                   name="whatsapp_auto_response" <%= settings && settings.whatsapp_auto_response === 'true' ? 'checked' : '' %>>
+                            <label class="form-check-label" for="whatsapp_auto_response">
+                                Auto Response
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">Automatically respond to incoming messages</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="ai_enabled" 
+                                   name="ai_enabled" <%= settings && settings.ai_enabled === 'true' ? 'checked' : '' %>>
+                            <label class="form-check-label" for="ai_enabled">
+                                AI Responses (Gemini)
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">Use Google Gemini AI for intelligent responses</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="manual_mode" 
+                                   name="manual_mode" <%= settings && settings.manual_mode === 'true' ? 'checked' : '' %>>
+                            <label class="form-check-label" for="manual_mode">
+                                Manual Mode
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">Disable auto responses, handle all messages manually</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="welcome_message" class="form-label">Welcome Message</label>
+                        <textarea class="form-control" id="welcome_message" name="welcome_message" rows="3"
+                                  placeholder="Enter your welcome message..."><%= settings ? settings.welcome_message : '' %></textarea>
+                        <small class="form-text text-muted">Default message when AI is disabled</small>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- WhatsApp Connection Status -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-wifi me-2"></i>Connection Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">WhatsApp Status</label>
+                    <div class="d-flex align-items-center">
+                        <span id="connection-status" class="badge bg-danger me-2">Disconnected</span>
+                        <button id="reconnect-btn" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-sync me-1"></i>Reconnect
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">QR Code</label>
+                    <div id="qr-status">
+                        <p class="text-muted">Connect WhatsApp to see QR code</p>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <button id="disconnect-btn" class="btn btn-outline-danger" disabled>
+                        <i class="fas fa-unlink me-1"></i>Disconnect WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Information -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>System Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Version:</strong>
+                    </div>
+                    <div class="col-6">
+                        1.0.0
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Node.js:</strong>
+                    </div>
+                    <div class="col-6">
+                        <%= process.version %>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Environment:</strong>
+                    </div>
+                    <div class="col-6">
+                        <%= process.env.NODE_ENV || 'development' %>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-6">
+                        <strong>AI Status:</strong>
+                    </div>
+                    <div class="col-6">
+                        <span id="ai-status" class="badge bg-warning">Not Configured</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Configuration Modal -->
+<div class="modal fade" id="aiConfigModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-brain me-2"></i>AI Configuration
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>Google Gemini API Setup</h6>
+                    <ol class="mb-0">
+                        <li>Visit <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+                        <li>Create a new API key</li>
+                        <li>Copy the API key</li>
+                        <li>Update your .env file with: <code>GEMINI_API_KEY=your_api_key_here</code></li>
+                        <li>Restart the application</li>
+                    </ol>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="apiKeyPreview" class="form-label">Current API Key</label>
+                    <input type="text" class="form-control" id="apiKeyPreview" 
+                           value="<%= process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.substring(0, 10) + '...' : 'Not configured' %>" 
+                           readonly>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="https://makersuite.google.com/app/apikey" target="_blank" class="btn btn-primary">
+                    Get API Key
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const connectionStatus = document.getElementById('connection-status');
+    const reconnectBtn = document.getElementById('reconnect-btn');
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    const qrStatus = document.getElementById('qr-status');
+    const aiStatus = document.getElementById('ai-status');
+    
+    // Check AI configuration
+    const apiKey = '<%= process.env.GEMINI_API_KEY %>';
+    if (apiKey && apiKey !== 'your-gemini-api-key-here') {
+        aiStatus.textContent = 'Configured';
+        aiStatus.className = 'badge bg-success';
+    } else {
+        aiStatus.innerHTML = \`
+            <span class="me-2">Not Configured</span>
+            <button class="btn btn-xs btn-outline-light" data-bs-toggle="modal" data-bs-target="#aiConfigModal">
+                Setup
+            </button>
+        \`;
+        aiStatus.className = 'badge bg-warning';
+    }
+
+    // Socket events for connection status
+    if (typeof socket !== 'undefined') {
+        socket.on('whatsapp-status', function(data) {
+            if (data.connected) {
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.className = 'badge bg-success me-2';
+                disconnectBtn.disabled = false;
+                qrStatus.innerHTML = '<p class="text-success">WhatsApp connected successfully!</p>';
+            } else {
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.className = 'badge bg-danger me-2';
+                disconnectBtn.disabled = true;
+                qrStatus.innerHTML = '<p class="text-muted">Connect WhatsApp to see QR code</p>';
+            }
+        });
+
+        socket.on('qr-code', function(qrData) {
+            if (qrData) {
+                qrStatus.innerHTML = \`
+                    <div class="text-center">
+                        <img src="\${qrData}" alt="QR Code" class="img-fluid" style="max-width: 200px;">
+                        <p class="mt-2 text-muted small">Scan with WhatsApp</p>
+                    </div>
+                \`;
+            } else {
+                if (connectionStatus.textContent === 'Connected') {
+                    qrStatus.innerHTML = '<p class="text-success">WhatsApp connected successfully!</p>';
+                } else {
+                    qrStatus.innerHTML = '<p class="text-muted">Connect WhatsApp to see QR code</p>';
+                }
+            }
+        });
+    }
+
+    // Reconnect button
+    reconnectBtn.addEventListener('click', async function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Connecting...';
+
+        try {
+            const response = await fetch('/whatsapp/reconnect', {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                qrStatus.innerHTML = '<p class="text-info">Connecting... QR code will appear here.</p>';
+            } else {
+                alert('Failed to reconnect: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Reconnect error:', error);
+            alert('Error reconnecting');
+        } finally {
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-sync me-1"></i>Reconnect';
+        }
+    });
+
+    // Disconnect button
+    disconnectBtn.addEventListener('click', async function() {
+        if (!confirm('Are you sure you want to disconnect WhatsApp?')) {
+            return;
+        }
+
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Disconnecting...';
+
+        try {
+            const response = await fetch('/whatsapp/disconnect', {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.className = 'badge bg-danger me-2';
+                qrStatus.innerHTML = '<p class="text-muted">WhatsApp disconnected</p>';
+            } else {
+                alert('Failed to disconnect: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Disconnect error:', error);
+            alert('Error disconnecting');
+        } finally {
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-unlink me-1"></i>Disconnect WhatsApp';
+        }
+    });
+
+    // Form validation
+    const settingsForm = document.querySelector('form[action="/dashboard/settings"]');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', function(e) {
+            const welcomeMessage = document.getElementById('welcome_message').value;
+            
+            if (welcomeMessage.length > 500) {
+                e.preventDefault();
+                alert('Welcome message is too long. Maximum 500 characters allowed.');
+                return;
+            }
+        });
+    }
+
+    // Manual mode warning
+    const manualModeCheckbox = document.getElementById('manual_mode');
+    if (manualModeCheckbox) {
+        manualModeCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                if (!confirm('Enabling manual mode will disable all automatic responses. You will need to handle all messages manually. Continue?')) {
+                    this.checked = false;
+                }
+            }
+        });
+    }
+
+    // AI enabled warning
+    const aiEnabledCheckbox = document.getElementById('ai_enabled');
+    if (aiEnabledCheckbox) {
+        aiEnabledCheckbox.addEventListener('change', function() {
+            if (this.checked && (!apiKey || apiKey === 'your-gemini-api-key-here')) {
+                this.checked = false;
+                document.querySelector('[data-bs-target="#aiConfigModal"]').click();
+            }
+        });
+    }
+});
+</script>
+`}) %>

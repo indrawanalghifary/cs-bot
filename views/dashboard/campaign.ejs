@@ -1,0 +1,355 @@
+<%- include('../layout', {body: `
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-bullhorn me-2"></i><%= campaign.name %></h2>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="/bulk">Bulk Messaging</a></li>
+                        <li class="breadcrumb-item active"><%= campaign.name %></li>
+                    </ol>
+                </nav>
+            </div>
+            <div>
+                <% 
+                let badgeClass = 'secondary';
+                if (campaign.status === 'completed') badgeClass = 'success';
+                else if (campaign.status === 'running') badgeClass = 'warning';
+                else if (campaign.status === 'failed') badgeClass = 'danger';
+                %>
+                <span class="badge bg-<%= badgeClass %> fs-6">
+                    <%= campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1) %>
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Campaign Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title"><%= campaign.total_contacts %></h4>
+                        <p class="card-text">Total Contacts</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title"><%= campaign.sent_count %></h4>
+                        <p class="card-text">Sent</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-danger">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title"><%= campaign.failed_count %></h4>
+                        <p class="card-text">Failed</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-times-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">
+                            <%= Math.round((campaign.sent_count / campaign.total_contacts) * 100) || 0 %>%
+                        </h4>
+                        <p class="card-text">Success Rate</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-chart-pie fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Bar -->
+<% if (campaign.status === 'running' || campaign.status === 'completed') { %>
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-chart-line me-2"></i>Progress
+                </h5>
+                <div class="progress mb-2" style="height: 20px;">
+                    <div class="progress-bar bg-success" role="progressbar" 
+                         style="width: <%= (campaign.sent_count / campaign.total_contacts) * 100 %>%">
+                        Sent: <%= campaign.sent_count %>
+                    </div>
+                    <div class="progress-bar bg-danger" role="progressbar" 
+                         style="width: <%= (campaign.failed_count / campaign.total_contacts) * 100 %>%">
+                        Failed: <%= campaign.failed_count %>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <small class="text-muted">
+                        <%= campaign.sent_count + campaign.failed_count %> of <%= campaign.total_contacts %> processed
+                    </small>
+                    <small class="text-muted">
+                        Created: <%= new Date(campaign.created_at).toLocaleString() %>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<% } %>
+
+<!-- Message Template -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-comment me-2"></i>Message Template
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="bg-light p-3 rounded">
+                    <%= campaign.message_template %>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        Character count: <%= campaign.message_template.length %>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<% if (campaign.status === 'pending') { %>
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">Campaign Actions</h5>
+                <p class="card-text">This campaign is ready to start. Click the button below to begin sending messages.</p>
+                <button class="btn btn-success btn-lg me-2" id="start-campaign-btn">
+                    <i class="fas fa-play me-2"></i>Start Campaign
+                </button>
+                <button class="btn btn-outline-danger btn-lg" id="delete-campaign-btn">
+                    <i class="fas fa-trash me-2"></i>Delete Campaign
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<% } %>
+
+<!-- Contact List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>Contact List
+                    </h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="filterContacts('all')">All</button>
+                        <button class="btn btn-sm btn-outline-success" onclick="filterContacts('sent')">Sent</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="filterContacts('failed')">Failed</button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="filterContacts('pending')">Pending</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <% if (contacts && contacts.length > 0) { %>
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="contacts-table">
+                            <thead>
+                                <tr>
+                                    <th>Phone</th>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Sent At</th>
+                                    <th>Error Message</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% contacts.forEach(contact => { %>
+                                <tr data-status="<%= contact.status %>">
+                                    <td><%= contact.phone %></td>
+                                    <td><%= contact.name || '-' %></td>
+                                    <td>
+                                        <% 
+                                        let statusBadge = 'secondary';
+                                        if (contact.status === 'sent') statusBadge = 'success';
+                                        else if (contact.status === 'failed') statusBadge = 'danger';
+                                        else if (contact.status === 'pending') statusBadge = 'warning';
+                                        %>
+                                        <span class="badge bg-<%= statusBadge %>">
+                                            <%= contact.status.charAt(0).toUpperCase() + contact.status.slice(1) %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <%= contact.sent_at ? new Date(contact.sent_at).toLocaleString() : '-' %>
+                                    </td>
+                                    <td>
+                                        <% if (contact.error_message) { %>
+                                            <span class="text-danger" title="<%= contact.error_message %>">
+                                                <%= contact.error_message.length > 30 ? contact.error_message.substring(0, 30) + '...' : contact.error_message %>
+                                            </span>
+                                        <% } else { %>
+                                            -
+                                        <% } %>
+                                    </td>
+                                </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No contacts found for this campaign</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startBtn = document.getElementById('start-campaign-btn');
+    const deleteBtn = document.getElementById('delete-campaign-btn');
+    const campaignId = '<%= campaign.id %>';
+
+    // Start campaign
+    if (startBtn) {
+        startBtn.addEventListener('click', async function() {
+            if (!confirm('Are you sure you want to start this campaign? Messages will be sent to all contacts.')) {
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Starting...';
+
+            try {
+                const response = await fetch(\`/bulk/campaign/\${campaignId}/start\`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Campaign started successfully!');
+                    location.reload();
+                } else {
+                    alert('Failed to start campaign: ' + data.error);
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-play me-2"></i>Start Campaign';
+                }
+            } catch (error) {
+                console.error('Error starting campaign:', error);
+                alert('Error starting campaign');
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-play me-2"></i>Start Campaign';
+            }
+        });
+    }
+
+    // Delete campaign
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', async function() {
+            if (!confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Deleting...';
+
+            try {
+                const response = await fetch(\`/bulk/campaign/\${campaignId}\`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Campaign deleted successfully!');
+                    window.location.href = '/bulk';
+                } else {
+                    alert('Failed to delete campaign: ' + data.error);
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-trash me-2"></i>Delete Campaign';
+                }
+            } catch (error) {
+                console.error('Error deleting campaign:', error);
+                alert('Error deleting campaign');
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-trash me-2"></i>Delete Campaign';
+            }
+        });
+    }
+});
+
+// Filter contacts by status
+function filterContacts(status) {
+    const table = document.getElementById('contacts-table');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        const rowStatus = row.dataset.status;
+        if (status === 'all' || rowStatus === status) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Update button states
+    document.querySelectorAll('[onclick^="filterContacts"]').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline-secondary');
+    });
+    
+    event.target.classList.remove('btn-outline-secondary');
+    event.target.classList.add('btn-primary');
+}
+
+// Auto-refresh for running campaigns
+<% if (campaign.status === 'running') { %>
+setInterval(() => {
+    location.reload();
+}, 30000); // Refresh every 30 seconds
+<% } %>
+</script>
+`}) %>

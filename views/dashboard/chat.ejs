@@ -1,0 +1,287 @@
+<%- include('../layout', {body: `
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-comments me-2"></i>Chat Interface</h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Contact List -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-users me-2"></i>Contacts
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="contact-list">
+                    <% if (contacts && contacts.length > 0) { %>
+                        <% contacts.forEach(contact => { %>
+                        <div class="contact-item" data-phone="<%= contact.phone %>">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold"><%= contact.name || contact.phone %></div>
+                                    <div class="text-muted small"><%= contact.phone %></div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="status-indicator status-online"></div>
+                                    <div class="text-muted small">
+                                        <%= new Date(contact.created_at).toLocaleDateString() %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <% }); %>
+                    <% } else { %>
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-2x text-muted mb-2"></i>
+                            <p class="text-muted">No contacts available</p>
+                            <small class="text-muted">Contacts will appear here when you receive messages</small>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-comment me-2"></i>
+                        <span id="chat-contact-name">Select a contact to start chatting</span>
+                    </h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="toggleManualMode()">
+                            <i class="fas fa-hand-paper me-1"></i>Manual Mode
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-body p-0">
+                <!-- Chat Messages -->
+                <div id="chat-messages" class="chat-container">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-comment-dots fa-3x mb-3"></i>
+                        <p>Select a contact from the left to view conversation</p>
+                    </div>
+                </div>
+                
+                <!-- Message Input -->
+                <div class="p-3 border-top">
+                    <form id="chat-form" class="d-flex gap-2">
+                        <input type="text" 
+                               id="chat-input" 
+                               class="form-control" 
+                               placeholder="Type your message..."
+                               disabled>
+                        <button type="submit" 
+                                class="btn btn-primary" 
+                                disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Message Notification -->
+<div id="message-notification" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; display: none;">
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <i class="fas fa-comment me-2"></i>
+        <span id="notification-text">New message received</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+</div>
+
+<script>
+// Chat-specific JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    const contactItems = document.querySelectorAll('.contact-item');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const chatSubmitBtn = chatForm.querySelector('button[type="submit"]');
+    const chatContactName = document.getElementById('chat-contact-name');
+    
+    let currentContact = null;
+
+    // Contact selection
+    contactItems.forEach(item => {
+        item.addEventListener('click', function() {
+            selectContact(this);
+        });
+    });
+
+    function selectContact(contactElement) {
+        // Remove active class from all contacts
+        contactItems.forEach(item => item.classList.remove('active'));
+        
+        // Add active class to selected contact
+        contactElement.classList.add('active');
+        
+        const phone = contactElement.dataset.phone;
+        const name = contactElement.querySelector('.fw-bold').textContent;
+        
+        currentContact = phone;
+        chatContactName.textContent = name;
+        
+        // Enable chat input
+        chatInput.disabled = false;
+        chatSubmitBtn.disabled = false;
+        chatInput.focus();
+        
+        // Load chat messages
+        loadChatMessages(phone);
+    }
+
+    async function loadChatMessages(phone) {
+        try {
+            const response = await fetch(\`/dashboard/chat/messages/\${phone}\`);
+            const data = await response.json();
+
+            const chatContainer = document.getElementById('chat-messages');
+            
+            if (data.success) {
+                chatContainer.innerHTML = '';
+                
+                if (data.messages.length === 0) {
+                    chatContainer.innerHTML = \`
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-comment fa-3x mb-3"></i>
+                            <p>No messages yet. Start the conversation!</p>
+                        </div>
+                    \`;
+                } else {
+                    data.messages.forEach(message => {
+                        addMessageToChat(message);
+                    });
+                }
+            } else {
+                chatContainer.innerHTML = \`
+                    <div class="text-center text-danger py-5">
+                        <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                        <p>Error loading messages</p>
+                    </div>
+                \`;
+            }
+        } catch (error) {
+            console.error('Error loading messages:', error);
+        }
+    }
+
+    function addMessageToChat(message) {
+        const chatContainer = document.getElementById('chat-messages');
+        const messageElement = document.createElement('div');
+        
+        let messageType = 'incoming';
+        if (message.message_type === 'outgoing') {
+            messageType = message.is_from_bot ? 'bot' : 'outgoing';
+        }
+        
+        messageElement.className = \`message \${messageType} new-message\`;
+        
+        const timeString = new Date(message.timestamp).toLocaleTimeString();
+        
+        messageElement.innerHTML = \`
+            <div>\${escapeHtml(message.content)}</div>
+            <div class="message-time">\${timeString}</div>
+        \`;
+
+        chatContainer.appendChild(messageElement);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Send message
+    chatForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const message = chatInput.value.trim();
+        if (!message || !currentContact) return;
+
+        try {
+            const response = await fetch('/dashboard/chat/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    phone: currentContact,
+                    message: message
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                chatInput.value = '';
+                
+                // Add message to chat immediately
+                addMessageToChat({
+                    content: message,
+                    message_type: 'outgoing',
+                    is_from_bot: false,
+                    timestamp: new Date().toISOString()
+                });
+            } else {
+                alert('Failed to send message: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            alert('Error sending message');
+        }
+    });
+
+    // Socket events for real-time updates
+    if (typeof socket !== 'undefined') {
+        socket.on('new-message', function(data) {
+            if (currentContact === data.phone) {
+                addMessageToChat({
+                    content: data.message,
+                    message_type: 'incoming',
+                    is_from_bot: false,
+                    timestamp: data.timestamp
+                });
+            }
+            
+            // Show notification
+            showNotification(\`New message from \${data.phone}\`, data.message);
+        });
+
+        socket.on('message-sent', function(data) {
+            if (currentContact === data.phone) {
+                addMessageToChat({
+                    content: data.message,
+                    message_type: 'outgoing',
+                    is_from_bot: data.isFromBot,
+                    timestamp: data.timestamp
+                });
+            }
+        });
+    }
+
+    function showNotification(title, message) {
+        const notification = document.getElementById('message-notification');
+        const notificationText = document.getElementById('notification-text');
+        
+        notificationText.textContent = \`\${title}: \${message.substring(0, 50)}\${message.length > 50 ? '...' : ''}\`;
+        notification.style.display = 'block';
+        
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 5000);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+});
+</script>
+`}) %>

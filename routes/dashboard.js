@@ -165,4 +165,28 @@ router.post('/settings', async (req, res) => {
     }
 });
 
+// Toggle manual mode
+router.post('/settings/toggle-manual', async (req, res) => {
+    try {
+        await db.initialize();
+        
+        const currentMode = await db.getSetting('manual_mode');
+        const newMode = currentMode === 'true' ? 'false' : 'true';
+        
+        await db.setSetting('manual_mode', newMode);
+        
+        res.json({
+            success: true,
+            manualMode: newMode === 'true'
+        });
+        
+    } catch (error) {
+        console.error('Toggle manual mode error:', error);
+        res.json({
+            success: false,
+            error: 'Failed to toggle manual mode'
+        });
+    }
+});
+
 module.exports = router;

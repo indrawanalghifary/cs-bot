@@ -39,9 +39,24 @@ class WhatsAppService {
 
             this.sock = makeWASocket({
                 auth: state,
-                printQRInTerminal: true,
+                printQRInTerminal: false,
                 logger: {
-                    level: 'silent'
+                    level: 'silent',
+                    child: () => ({
+                        level: 'silent',
+                        debug: () => {},
+                        info: () => {},
+                        warn: () => {},
+                        error: () => {},
+                        fatal: () => {},
+                        trace: () => {}
+                    }),
+                    debug: () => {},
+                    info: () => {},
+                    warn: () => {},
+                    error: () => {},
+                    fatal: () => {},
+                    trace: () => {}
                 }
             });
 
@@ -62,12 +77,19 @@ class WhatsAppService {
                 }
 
                 if (connection === 'close') {
-                    const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+                    const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
                     
                     this.isConnected = false;
                     this.io.emit('whatsapp-status', { connected: false });
                     
-                    console.log('Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
+                    console.log('Connection closed due to ', lastDisconnect?.error?.message || lastDisconnect?.error, ', reconnecting ', shouldReconnect);
+                    
+                    // Don't reconnect on network errors
+                    const error = lastDisconnect?.error;
+                    if (error && (error.message?.includes('EAI_AGAIN') || error.message?.includes('ENOTFOUND'))) {
+                        console.log('Network connectivity issue detected. Not reconnecting.');
+                        return;
+                    }
                     
                     if (shouldReconnect) {
                         setTimeout(() => this.connect(), 5000);
@@ -88,9 +110,25 @@ class WhatsAppService {
                 }
             });
 
+            // Handle WebSocket errors
+            this.sock.ws.on('error', (error) => {
+                console.error('WebSocket error:', error.message);
+                // Stop retrying on network errors
+                if (error.code === 'EAI_AGAIN' || error.code === 'ENOTFOUND') {
+                    console.log('Network connectivity issue detected. Stopping WhatsApp connection attempts.');
+                    this.isConnected = false;
+                    this.io.emit('whatsapp-status', { connected: false });
+                }
+            });
+
         } catch (error) {
-            console.error('WhatsApp connection error:', error);
-            setTimeout(() => this.connect(), 10000);
+            console.error('WhatsApp connection error:', error.message);
+            // Don't retry if it's a network connectivity issue
+            if (error.code !== 'EAI_AGAIN' && error.code !== 'ENOTFOUND') {
+                setTimeout(() => this.connect(), 10000);
+            } else {
+                console.log('Network connectivity issue detected. WhatsApp will remain disconnected.');
+            }
         }
     }
 
