@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title || 'CS Bot' %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <% if (locals.user) { %>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="fab fa-whatsapp me-2"></i>CS Bot
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard/chat">
+                            <i class="fas fa-comments me-1"></i>Chat
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/bulk">
+                            <i class="fas fa-bullhorn me-1"></i>Bulk Message
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard/settings">
+                            <i class="fas fa-cog me-1"></i>Settings
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <span class="navbar-text me-3">
+                            <span id="whatsapp-status" class="badge bg-danger">Disconnected</span>
+                        </span>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user me-1"></i><%= user.username %>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="fas fa-sign-out-alt me-1"></i>Logout
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <% } %>
+
+    <!-- Flash Messages -->
+    <% if (locals.success_msg && success_msg.length > 0) { %>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <%= success_msg %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+    
+    <% if (locals.error_msg && error_msg.length > 0) { %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <%= error_msg %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+    
+    <% if (locals.error && error.length > 0) { %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <% } %>
+
+    <!-- Main Content -->
+    <main class="<%= locals.user ? 'container-fluid mt-4' : '' %>">
+        
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-cog me-2"></i>Settings</h2>
+    </div>
+</div>
+
+<div class="row">
+    <!-- WhatsApp Settings -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fab fa-whatsapp me-2"></i>WhatsApp Settings
+                </h5>
+            </div>
+            <div class="card-body">
+                <form action="/dashboard/settings" method="POST">
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="whatsapp_auto_response" 
+                                   name="whatsapp_auto_response" <%= settings && settings.whatsapp_auto_response === 'true' ? 'checked' : '' %>>
+                            <label class="form-check-label" for="whatsapp_auto_response">
+                                Auto Response
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">Automatically respond to incoming messages</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="ai_enabled" 
+                                   name="ai_enabled" <%= settings && settings.ai_enabled === 'true' ? 'checked' : '' %>>
+                            <label class="form-check-label" for="ai_enabled">
+                                AI Responses (Gemini)
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">Use Google Gemini AI for intelligent responses</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="manual_mode" 
+                                   name="manual_mode" <%= settings && settings.manual_mode === 'true' ? 'checked' : '' %>>
+                            <label class="form-check-label" for="manual_mode">
+                                Manual Mode
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">Disable auto responses, handle all messages manually</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="welcome_message" class="form-label">Welcome Message</label>
+                        <textarea class="form-control" id="welcome_message" name="welcome_message" rows="3"
+                                  placeholder="Enter your welcome message..."><%= settings ? settings.welcome_message : '' %></textarea>
+                        <small class="form-text text-muted">Default message when AI is disabled</small>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- WhatsApp Connection Status -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-wifi me-2"></i>Connection Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">WhatsApp Status</label>
+                    <div class="d-flex align-items-center">
+                        <span id="connection-status" class="badge bg-danger me-2">Disconnected</span>
+                        <button id="reconnect-btn" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-sync me-1"></i>Reconnect
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">QR Code</label>
+                    <div id="qr-status">
+                        <p class="text-muted">Connect WhatsApp to see QR code</p>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <button id="disconnect-btn" class="btn btn-outline-danger" disabled>
+                        <i class="fas fa-unlink me-1"></i>Disconnect WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Information -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>System Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Version:</strong>
+                    </div>
+                    <div class="col-6">
+                        1.0.0
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Environment:</strong>
+                    </div>
+                    <div class="col-6">
+                        <%= process.env.NODE_ENV || 'development' %>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-6">
+                        <strong>AI Status:</strong>
+                    </div>
+                    <div class="col-6">
+                        <span id="ai-status" class="badge bg-warning">Not Configured</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/app.js"></script>
+    
+    <% if (locals.user) { %>
+    <script>
+        // Initialize socket connection
+        const socket = io();
+        
+        // Handle WhatsApp status updates
+        socket.on('whatsapp-status', (data) => {
+            const statusElement = document.getElementById('whatsapp-status');
+            if (data.connected) {
+                statusElement.textContent = 'Connected';
+                statusElement.className = 'badge bg-success';
+            } else {
+                statusElement.textContent = 'Disconnected';
+                statusElement.className = 'badge bg-danger';
+            }
+        });
+
+        const connectionStatus = document.getElementById('connection-status');
+        const reconnectBtn = document.getElementById('reconnect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const qrStatus = document.getElementById('qr-status');
+        const aiStatus = document.getElementById('ai-status');
+        
+        // Check AI configuration
+        const apiKey = '<%= process.env.GEMINI_API_KEY %>';
+        if (apiKey && apiKey !== 'your-gemini-api-key-here') {
+            aiStatus.textContent = 'Configured';
+            aiStatus.className = 'badge bg-success';
+        }
+
+        // Socket events for connection status
+        socket.on('whatsapp-status', function(data) {
+            if (data.connected) {
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.className = 'badge bg-success me-2';
+                disconnectBtn.disabled = false;
+                qrStatus.innerHTML = '<p class="text-success">WhatsApp connected successfully!</p>';
+            } else {
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.className = 'badge bg-danger me-2';
+                disconnectBtn.disabled = true;
+                qrStatus.innerHTML = '<p class="text-muted">Connect WhatsApp to see QR code</p>';
+            }
+        });
+
+        socket.on('qr-code', function(qrData) {
+            if (qrData) {
+                qrStatus.innerHTML = `
+                    <div class="text-center">
+                        <img src="${qrData}" alt="QR Code" class="img-fluid" style="max-width: 200px;">
+                        <p class="mt-2 text-muted small">Scan with WhatsApp</p>
+                    </div>
+                `;
+            } else {
+                if (connectionStatus.textContent === 'Connected') {
+                    qrStatus.innerHTML = '<p class="text-success">WhatsApp connected successfully!</p>';
+                } else {
+                    qrStatus.innerHTML = '<p class="text-muted">Connect WhatsApp to see QR code</p>';
+                }
+            }
+        });
+
+        // Reconnect button
+        reconnectBtn.addEventListener('click', async function() {
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Connecting...';
+
+            try {
+                const response = await fetch('/whatsapp/reconnect', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    qrStatus.innerHTML = '<p class="text-info">Connecting... QR code will appear here.</p>';
+                } else {
+                    alert('Failed to reconnect: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Reconnect error:', error);
+                alert('Error reconnecting');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-sync me-1"></i>Reconnect';
+            }
+        });
+
+        // Disconnect button
+        disconnectBtn.addEventListener('click', async function() {
+            if (!confirm('Are you sure you want to disconnect WhatsApp?')) {
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Disconnecting...';
+
+            try {
+                const response = await fetch('/whatsapp/disconnect', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    connectionStatus.textContent = 'Disconnected';
+                    connectionStatus.className = 'badge bg-danger me-2';
+                    qrStatus.innerHTML = '<p class="text-muted">WhatsApp disconnected</p>';
+                } else {
+                    alert('Failed to disconnect: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Disconnect error:', error);
+                alert('Error disconnecting');
+            } finally {
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-unlink me-1"></i>Disconnect WhatsApp';
+            }
+        });
+    </script>
+    <% } %>
+</body>
+</html>
